@@ -1,0 +1,39 @@
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Local package-manager cache
+.pnpm-store/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Python-generated files (future training pipeline)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local databases and database sidecar files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
