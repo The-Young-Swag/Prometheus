@@ -1,224 +1,415 @@
-# Prometheus — Project Context
+# Prometheus --- Project Context
 
-> **Project type:** Local-first AI assistant and applied LLM fine-tuning project  
-> **Tagline:** Understand. Decide. Validate. Act.  
-> **Primary goal:** Build a practical personal AI assistant that converts natural-language requests into structured actions, executes them safely, and demonstrates whether fine-tuning a small language model improves tool-calling performance.  
-> **Cost target:** $0 infrastructure and software cost, using local execution and available free-tier resources.
+> **Project type:** Local-first AI assistant and applied LLM fine-tuning
+> project\
+> **Tagline:** Understand. Decide. Validate. Act.\
+> **Primary goal:** Build a practical personal AI assistant that
+> converts natural-language requests into structured actions, executes
+> them safely, and measures whether fine-tuning a small language model
+> improves tool-calling performance.\
+> **Cost target:** \$0 infrastructure and software cost where feasible,
+> prioritizing local execution and available free-tier resources.
 
 ## 1. Abstract
 
-Prometheus is a local-first, AI-powered personal assistant designed to translate natural-language requests into structured, validated actions. Users can save notes, search stored information, create tasks and calendar events, perform calculations, and receive conversational responses through a web-based chat interface.
+Prometheus is a local-first AI-powered personal assistant that
+translates natural-language requests into structured, validated actions.
+Planned capabilities include saving and searching notes, creating tasks
+and calendar events, performing calculations, and responding
+conversationally through a web-based chat interface.
 
-Unlike a conventional chatbot that only generates text, Prometheus uses a controlled tool-execution architecture. A language model interprets the user's request and proposes a structured response. A TypeScript backend validates that response against shared schemas, checks tool permissions, resolves dates and arithmetic deterministically, and executes only explicitly supported operations. The model never receives unrestricted access to the operating system, filesystem, shell, or network.
+A language model interprets a request and proposes a structured
+response. The application---not the model---validates the response,
+checks permissions, resolves dates and arithmetic deterministically, and
+executes only explicitly supported operations. The model does not
+receive unrestricted access to the operating system, filesystem, shell,
+or network.
 
-The project also investigates the practical value of training a small open-weight language model for structured tool use. A reproducible machine-learning pipeline will generate and curate training examples, evaluate an untuned baseline, optionally use teacher-generated examples, fine-tune a smaller student model using parameter-efficient methods such as QLoRA, and compare the results against the baseline on a held-out test set. The resulting model will be quantized and served locally through Ollama if compatibility and hardware constraints permit.
-
-Prometheus combines full-stack development, API design, runtime validation, local persistence, AI safety, dataset engineering, model training, and empirical evaluation in one reproducible project. It prioritizes measurable results, transparent execution, understandable architecture, and zero-cost operation over claims of general-purpose intelligence.
+The project also investigates whether fine-tuning a small open-weight
+language model improves structured tool use. The plan is to establish a
+baseline, curate and validate examples, optionally use teacher-generated
+supervision, fine-tune a compatible student model using
+parameter-efficient methods such as QLoRA, and compare results on a
+held-out evaluation set. If compatible with the chosen model and
+hardware, the resulting model may be quantized and served locally
+through Ollama.
 
 ## 2. Goals
 
-### 2.1 Product goals
+### Product goals
 
-- Build a useful personal assistant that runs locally.
-- Convert natural-language requests into structured responses and tool actions.
-- Support notes, tasks, calendar events, arithmetic, clarification, and ordinary responses.
-- Validate every model-generated action before execution.
-- Make tool calls, validation outcomes, and execution results inspectable.
-- Persist application data locally.
-- Provide a responsive React web interface.
-- Operate without paid inference APIs or mandatory cloud services.
+-   Build a useful personal assistant that runs locally.
+-   Convert natural-language requests into structured responses and tool
+    actions.
+-   Support notes, tasks, calendar events, arithmetic, clarification,
+    and ordinary responses.
+-   Validate every model-generated action before execution.
+-   Make tool calls, validation outcomes, and execution results
+    inspectable.
+-   Persist application data locally.
+-   Provide a responsive React web interface.
+-   Operate without paid inference APIs or mandatory cloud services.
 
-### 2.2 Machine-learning goals
+### Machine-learning goals
 
-- Demonstrate the lifecycle of a small language-model fine-tuning experiment.
-- Build a curated dataset of tool-selection and argument-generation examples.
-- Establish reproducible baseline measurements before training.
-- Investigate teacher-generated supervision and knowledge distillation where feasible.
-- Fine-tune a compatible open-weight model using QLoRA or another suitable parameter-efficient method.
-- Quantize and run the trained model locally if supported by the chosen model and runtime.
-- Compare base and fine-tuned model performance on the same held-out evaluation set.
-- Publish honest measurements, limitations, licensing information, and reproducibility instructions.
+-   Build a curated dataset of tool-selection and argument-generation
+    examples.
+-   Establish reproducible baseline measurements before training.
+-   Investigate teacher-generated supervision and knowledge distillation
+    where feasible.
+-   Fine-tune a compatible open-weight model using QLoRA or another
+    suitable parameter-efficient method.
+-   Compare base and fine-tuned model performance on the same held-out
+    evaluation set.
+-   Publish honest measurements, limitations, licensing information, and
+    reproducibility instructions.
 
-### 2.3 Engineering and learning goals
+### Engineering and learning goals
 
-- Develop proficiency in TypeScript, React, Node.js, Hono, Zod, SQL, and testing.
-- Practice system design, separation of concerns, API contracts, error handling, and security.
-- Learn Python-based dataset preparation, fine-tuning, and model evaluation.
-- Use Git for incremental development and traceable changes.
-- Maintain architecture diagrams, decision records, and project progress notes.
+-   Develop proficiency in TypeScript, React, Bun, Hono, Zod, SQL, and
+    testing.
+-   Practice system design, API contracts, error handling, and security.
+-   Learn Python-based dataset preparation, fine-tuning, and evaluation.
+-   Use Git for incremental development and traceable changes.
+-   Use AI assistance to support learning rather than replace
+    understanding.
 
 ## 3. Non-goals
 
-The initial release will not attempt to:
+The initial release will not attempt to train a model from scratch,
+match frontier-model capabilities, provide unrestricted autonomous
+behavior, execute arbitrary model-generated code or shell commands,
+require paid AI APIs, or claim fine-tuning succeeded without measured
+evidence.
 
-- Train a language model from scratch.
-- Match the general capabilities of frontier models.
-- Provide unrestricted autonomous agent behavior.
-- Execute arbitrary shell commands or arbitrary code generated by the model.
-- Expose the user's local database or tool-execution API publicly without an appropriate security design.
-- Require multi-user accounts, authentication, or cloud-hosted inference.
-- Depend on paid AI APIs, paid GPU compute, or paid database hosting.
-- Implement every planned feature before the core request-to-action flow works.
-- Claim that fine-tuning or distillation is successful without measured evidence.
+## 4. Core features
 
-## 4. Target users and use cases
+### Natural-language interaction
 
-The primary user is an individual who wants a lightweight assistant for everyday productivity while keeping application data and inference local.
+-   Chat-based interface with user messages and assistant responses.
+-   Structured responses for normal answers, clarification requests, and
+    proposed tool actions.
+-   Friendly errors when the model or application cannot complete a
+    request.
 
-Representative requests:
+### Tool-calling system
 
-- "Save a note to review TypeScript tomorrow."
-- "Search my notes for database indexing."
-- "Add a task to finish the project README."
-- "Create a calendar event for Friday at 3 PM."
-- "Calculate 125 divided by 5."
-- "What should I do next?" when no tool action is appropriate.
-- "Schedule my meeting tomorrow." when required information is missing and clarification is necessary.
+The model proposes exactly one supported action per request in the
+initial release.
 
-The system must recognize unsupported requests and missing information rather than inventing tool arguments or executing an inappropriate action.
+  -----------------------------------------------------------------------
+  Tool or control action  Arguments               Purpose
+  ----------------------- ----------------------- -----------------------
+  `create_event`          `title`, `when_text`,   Create a calendar event
+                          optional `duration_min` 
 
-## 5. Core features
+  `add_note`              `text`, optional `tags` Save a note
 
-### 5.1 Natural-language interaction
+  `search_notes`          `query`                 Search stored notes
 
-- Chat-based interface.
-- User message submission and assistant responses.
-- Structured responses for normal answers, clarification requests, and proposed tool actions.
-- Friendly errors when the model or application cannot complete a request.
+  `add_task`              `title`, optional       Create a task
+                          `due_text`              
 
-### 5.2 Tool-calling system
+  `calculate`             `expression`            Evaluate arithmetic
+                                                  using a safe parser
 
-The model proposes exactly one supported action per request in the initial release.
+  `respond`               `message`               Return a conversational
+                                                  response
 
-| Tool or control action | Arguments | Purpose |
-|---|---|---|
-| `create_event` | `title`, `when_text`, optional `duration_min` | Create a calendar event |
-| `add_note` | `text`, optional `tags` | Save a note |
-| `search_notes` | `query` | Search stored notes |
-| `add_task` | `title`, optional `due_text` | Create a task |
-| `calculate` | `expression` | Evaluate arithmetic using a safe parser |
-| `respond` | `message` | Return a conversational response |
-| `clarify` | `question` | Ask for missing information |
+  `clarify`               `question`              Ask for missing
+                                                  information
+  -----------------------------------------------------------------------
 
-All tools must have explicit schemas, documented behavior, bounded inputs, and tests. No additional tools are available unless explicitly implemented and approved.
+Every tool must have an explicit schema, documented behavior, bounded
+inputs, and tests. No other tools are available unless explicitly
+implemented and approved.
 
-### 5.3 Validation and controlled execution
+### Validation and controlled execution
 
-- Parse model output as structured data.
-- Validate the output using shared Zod schemas.
-- Reject malformed output, unknown tool names, invalid arguments, and unexpected fields.
-- Retry once when a model response fails validation, where retrying is appropriate.
-- Return a clear error if validation still fails.
-- Check tool permissions independently of model output.
-- Require confirmation before write actions in the initial safety-oriented implementation.
-- Never treat a valid schema as proof that an action is safe or authorized.
+-   Parse model output as structured data and validate it using shared
+    Zod schemas.
+-   Reject malformed output, unknown tool names, invalid arguments, and
+    unexpected fields.
+-   Retry once when a model response fails validation, where
+    appropriate.
+-   Check tool permissions independently of model output.
+-   Require confirmation before write actions in the initial
+    implementation.
+-   Never treat schema validity as proof that an action is safe or
+    authorized.
 
-### 5.4 Local persistence
+### Local persistence
 
-- Store notes, tasks, events, and any approved local history in SQLite.
-- Use parameterized SQL statements.
-- Keep database files and sensitive local data out of version control.
-- Define appropriate schemas, data-access functions, and error handling.
-- Avoid introducing a remote database unless a demonstrated requirement justifies it.
+-   Store notes, tasks, events, and approved local history in SQLite.
+-   Use parameterized SQL.
+-   Keep database files and sensitive data out of version control.
 
-### 5.5 Date and arithmetic handling
+### Dates and arithmetic
 
-The language model extracts the user's original date phrase or arithmetic expression. Deterministic application code performs the actual resolution or calculation.
+The model extracts the user's original date phrase or arithmetic
+expression. Deterministic application code performs the actual
+resolution or calculation. - Use `chrono-node` or an equivalent tested
+date parser. - Use a restricted mathematical expression parser; never
+use JavaScript `eval`. - Define a timezone and current-time source. -
+Ask for clarification when a date is ambiguous.
 
-- Use `chrono-node` or an equivalent tested date parser for natural-language dates.
-- Use an explicitly restricted mathematical expression parser for arithmetic.
-- Never use JavaScript `eval` to calculate model-provided expressions.
-- Use a defined timezone and current-time source.
-- Ask for clarification when a date is ambiguous or cannot be resolved reliably.
+### Transparent interface
 
-### 5.6 Transparent execution interface
+Display the user's message, assistant response, proposed tool and
+arguments, validation/execution status, results or errors, confirmation
+controls, and panels for saved notes, tasks, and events.
 
-The interface should make the assistant's behavior inspectable.
+Stretch features such as streaming, conversation history, model
+switching, evaluation dashboards, Taglish robustness tests, and a
+browser-only demo are deferred until the core flow is reliable.
 
-- Display the user's message and assistant response.
-- Show the proposed tool name and arguments.
-- Show validation and execution status.
-- Display execution results or understandable errors.
-- Provide confirmation controls for actions requiring user approval.
-- Provide panels for saved notes, tasks, and events.
+## 5. Technology stack
 
-### 5.7 Secondary and stretch features
+### Runtime application
 
-After the core flow is reliable, consider:
+  -----------------------------------------------------------------------
+  Layer                   Technology              Responsibility / status
+  ----------------------- ----------------------- -----------------------
+  Frontend                React 19                UI; scaffold exists
 
-- Streaming responses.
-- Locally stored conversation history.
-- Model switching for baseline comparisons.
-- An evaluation-results page.
-- Additional task and event management operations.
-- Robustness tests for typos, multilingual input, and Taglish.
-- A browser-only demo using Transformers.js or WebLLM, if model size and browser hardware permit.
-- A public model card and short demonstration video.
+  Language                TypeScript              Static typing
 
-These are not prerequisites for the first working release.
+  Frontend tooling        Vite                    Development server and
+                                                  production builds;
+                                                  scaffold exists
 
-## 6. Technology stack
+  Styling                 Tailwind CSS            Planned; verify
+                                                  installation before use
 
-### 6.1 Runtime application
+  Backend runtime         **Bun**                 Intended runtime for
+                                                  `apps/api`
 
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Frontend | React 19 | User interface and application interactions |
-| Language | TypeScript | Static typing and maintainable application code |
-| Frontend tooling | Vite | Development server and production builds |
-| Styling | Tailwind CSS | Responsive UI styling |
-| Backend runtime | Node.js 24 | Server-side JavaScript execution |
-| HTTP framework | Hono | API routes and request handling |
-| Validation | Zod | Runtime validation and shared schemas |
-| Workspace | pnpm workspaces | Manage TypeScript apps and shared packages |
-| Database | SQLite | Local persistence |
-| SQLite access | `better-sqlite3`, subject to compatibility verification | Synchronous SQLite access through a Node.js binding |
-| Date parsing | `chrono-node` | Natural-language date interpretation |
-| Arithmetic | Restricted expression parser | Safe deterministic calculation |
-| Model client | Ollama's HTTP API or official JavaScript client | Request local model inference |
-| Model runtime | Ollama | Local model serving |
-| Testing | Vitest | Unit and integration tests |
-| Static checks | TypeScript compiler and ESLint | Type and code-quality checks |
-| Version control | Git and GitHub | Source history and collaboration |
+  Backend package manager **Bun**                 Intended for backend
+                                                  dependencies
 
-Dependency versions must be pinned and compatibility verified before adoption. Avoid adding dependencies without a concrete need.
+  HTTP framework          Hono                    Planned; not yet
+                                                  installed
 
-### 6.2 Model training and evaluation
+  Validation              Zod                     Planned runtime
+                                                  validation and shared
+                                                  schemas
 
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Training language | Python | Dataset processing and model experiments |
-| Training framework | PyTorch | Tensor computation and training |
-| Model library | Hugging Face Transformers | Load and train supported language models |
-| Dataset library | Hugging Face Datasets or JSONL utilities | Dataset loading and transformation |
-| Parameter-efficient training | PEFT | LoRA adapters and related methods |
-| Fine-tuning utilities | TRL or Unsloth | Supervised fine-tuning and memory-efficient training |
-| Training method | QLoRA, if supported | Reduce memory requirements during fine-tuning |
-| Dataset format | JSONL chat examples | Store requests and expected structured responses |
-| Model and dataset hosting | Hugging Face Hub | Optional publication of compatible artifacts |
-| Training compute | Available free Kaggle or Colab GPU resources | Time-limited cloud training |
-| Evaluation | Python scripts and JSON/CSV reports | Reproducible metrics and failure analysis |
+  Database                SQLite                  Planned local
+                                                  persistence
 
-The training stack is separate from the pnpm workspace. Python dependencies, notebooks, and model artifacts must not become runtime dependencies of the Node.js application.
+  SQLite access           Bun-compatible SQLite   Select after
+                          library                 compatibility
+                                                  verification
 
-### 6.3 Development and deployment tools
+  Date parsing            `chrono-node`           Natural-language date
+                                                  interpretation
 
-- VS Code dev container for a reproducible development environment.
-- Windsurf for inline autocomplete and coding assistance.
-- OpenCode for bounded implementation, investigation, and debugging tasks.
-- Antigravity for independent, preferably read-only, reviews.
-- ChatGPT for technical mentoring, architecture discussions, and guided implementation.
-- Cloudflare Pages, Vercel, or GitHub Pages for a static public frontend, subject to their applicable free-tier terms.
-- Local Ollama inference for the full assistant.
-- Free-tier or local compute for training, subject to availability.
+  Arithmetic              Restricted expression   Safe deterministic
+                          parser                  calculation
+
+  Model runtime           Ollama on Windows host  Local model serving
+
+  Model client            Ollama HTTP API or      Local inference
+                          compatible JS client    requests
+
+  Testing                 Vitest or               Select deliberately
+                          Bun-compatible setup    
+
+  Static checks           TypeScript and ESLint   Type and code-quality
+                                                  checks
+
+  Version control         Git                     Source history
+  -----------------------------------------------------------------------
+
+**Runtime decision:** Bun is the intended runtime for the backend.
+Node.js is present in the devcontainer and may continue supporting the
+existing frontend/tooling unless a separate migration is deliberately
+planned. Do not assume every Node-native package works under Bun; verify
+compatibility, especially for native SQLite bindings.
+
+**Package-management decision:** The repository already has a frontend
+scaffold and pnpm-related setup. Keep the frontend working while
+deciding whether pnpm remains the root workspace manager and Bun runs
+the API, or whether the repository deliberately migrates to Bun
+workspaces. Do not mix package managers in the same package or create
+competing lockfiles accidentally.
+
+Dependency versions must be pinned and compatibility verified before
+adoption.
+
+### Model training and evaluation
+
+  -----------------------------------------------------------------------
+  Layer                   Technology              Responsibility
+  ----------------------- ----------------------- -----------------------
+  Language                Python                  Dataset processing and
+                                                  experiments
+
+  Training framework      PyTorch                 Tensor computation and
+                                                  training
+
+  Model library           Hugging Face            Load and train
+                          Transformers            supported models
+
+  Dataset library         Hugging Face Datasets   Dataset handling
+                          or JSONL utilities      
+
+  Parameter-efficient     PEFT                    LoRA adapters
+  training                                        
+
+  Fine-tuning utilities   TRL or Unsloth          Supervised fine-tuning
+
+  Training method         QLoRA, if supported     Reduce training memory
+
+  Dataset format          JSONL chat examples     Store requests and
+                                                  expected responses
+
+  Optional hosting        Hugging Face Hub        Publish compatible
+                                                  artifacts
+
+  Training compute        Free Kaggle/Colab GPU   Time-limited training
+                          if available            
+
+  Evaluation              Python scripts and      Reproducible metrics
+                          JSON/CSV reports        
+  -----------------------------------------------------------------------
+
+The training stack is separate from the TypeScript runtime.
+
+## 6. Verified local inference environment
+
+This section records the state verified during initial testing on
+**2026-10-23**. It is a development-machine record, not a claim of
+production readiness.
+
+### Windows host hardware and driver
+
+  -----------------------------------------------------------------------
+  Item                                Verified value
+  ----------------------------------- -----------------------------------
+  Operating system                    Windows PowerShell environment;
+                                      Windows 11 previously reported
+
+  GPU                                 NVIDIA GeForce GTX 1650 Ti
+
+  Dedicated GPU memory                4,096 MiB (4 GB)
+
+  NVIDIA-SMI version                  610.47
+
+  Kernel-mode driver version          610.47
+
+  CUDA user-mode version reported by  13.3
+  `nvidia-smi`                        
+
+  System RAM                          15.8 GB reported by PowerShell
+  -----------------------------------------------------------------------
+
+The CUDA UMD version shown by `nvidia-smi` is driver-reported
+information; it does not by itself mean a separate CUDA Toolkit
+installation is required for Ollama. The GPU initially reported about
+879 MiB in use before model inference, with desktop applications also
+using GPU memory.
+
+### Ollama installation and model
+
+  ---------------------------------------------------------------------------------
+  Item                                Verified value
+  ----------------------------------- ---------------------------------------------
+  Ollama version                      `0.40.9`
+
+  Installation                        Official Windows PowerShell installer:
+                                      `irm https://ollama.com/install.ps1 \| iex`
+
+  Model                               `qwen2.5:1.5b`
+
+  Downloaded layer reported during    986 MB plus small metadata/layers
+  pull                                
+
+  `ollama ps` model size              1.2 GB
+
+  Reported processor placement        `100% GPU`
+
+  Reported context size               4096 tokens
+
+  Runner                              `llamacpp`
+
+  Tested API endpoint                 `http://localhost:11434/api/generate`
+  ---------------------------------------------------------------------------------
+
+The model was successfully downloaded and run on Windows. `ollama ps`
+reported `100% GPU` for the observed run. This confirms model placement
+for that run, but does not establish tokens per second, peak VRAM usage,
+long-context performance, or production suitability. Those remain to be
+benchmarked.
+
+### Initial inference tests
+
+**Test A --- Interactive CLI**
+
+Command:
+
+``` powershell
+ollama run qwen2.5:1.5b
+```
+
+The model interpreted "Remind me to study Express.js tomorrow at 7 PM"
+and returned the expected action, title, time phrase, and duration
+wrapped in a Markdown JSON code fence. This demonstrated basic
+instruction following, but prompt-only output may include formatting
+outside raw JSON.
+
+**Test B --- HTTP API without a schema**
+
+A PowerShell `POST` request to `/api/generate` with `stream = $false`
+succeeded. The model returned:
+
+``` json
+{
+  "action": "study",
+  "title": "Express.js"
+}
+```
+
+This was semantically insufficient for the planned contract: the action
+was unsupported and date/time and duration fields were missing. It is a
+useful baseline failure.
+
+**Test C --- HTTP API with JSON Schema**
+
+A later request provided a schema through Ollama's `format` field and
+set `temperature = 0`. The model returned:
+
+``` json
+{
+  "title": "Study Express.js",
+  "when_text": "tomorrow at 7 PM",
+  "action": "create_event",
+  "duration_min": 60
+}
+```
+
+This successful smoke test matched the requested shape and values. It is
+not a statistically meaningful evaluation. Backend-side Zod validation
+remains required.
+
+### Limitations and pending checks
+
+-   Ollama runs natively on Windows; the backend will run in the Linux
+    devcontainer. Container-to-host connectivity is not verified.
+-   `localhost` inside the devcontainer refers to the container, not
+    automatically the Windows host.
+-   Test the current Docker/devcontainer host reachability before
+    hardcoding the Ollama URL.
+-   Keep the Ollama API local; do not expose it to the public internet.
+-   Benchmark latency, output quality, and memory use before choosing
+    the final baseline.
+-   `qwen2.5:1.5b` is an initial baseline, not a final model choice.
 
 ## 7. Architecture
 
-Prometheus has two major subsystems: the runtime application and the offline training/evaluation pipeline.
+### Runtime architecture
 
-### 7.1 Runtime architecture
-
-```text
+``` text
 User
  |
  v
@@ -226,90 +417,63 @@ React + TypeScript frontend
  |
  | HTTP
  v
-Hono API
+Bun runtime + Hono API
  |
  +--> Prompt builder
  |      |
  |      v
- |    Ollama local model
+ |    Ollama on Windows host
+ |      |
+ |      v
+ |    Model output
  |
  +--> Output parser
- |      |
- |      v
- |    Shared Zod schema validation
- |      |
- |      v
- |    Tool authorization and confirmation
- |      |
- |      v
- |    Deterministic date/math resolver
- |      |
- |      v
- |    Whitelisted tool executor
- |      |
- |      v
- |    SQLite persistence
- |
- v
+        |
+        v
+      Shared Zod schema validation
+        |
+        v
+      Tool authorization and confirmation
+        |
+        v
+      Deterministic date/math resolver
+        |
+        v
+      Whitelisted tool executor
+        |
+        v
+      SQLite persistence
+        |
+        v
 Structured response to frontend
 ```
 
-### 7.2 Shared contract
+### Shared contract
 
-The shared package is the single source of truth for:
+The shared package should be the single source of truth for allowed tool
+names and arguments, response variants, Zod schemas, inferred TypeScript
+types, prompt/tool definitions where appropriate, and validation
+fixtures. Frontend and backend must not invent incompatible response
+structures independently.
 
-- Allowed tool names and arguments.
-- Response variants.
-- Zod schemas.
-- TypeScript types inferred from schemas.
-- Shared prompt or tool definitions where appropriate.
-- Validation tests and fixtures.
+### Offline training pipeline
 
-The frontend and backend must not independently invent incompatible response structures.
-
-### 7.3 Offline training pipeline
-
-```text
-Hand-written and generated examples
-              |
-              v
-     Dataset generation
-              |
-              v
-     Schema validation
-     Deduplication and review
-              |
-              v
-     Train / validation / test splits
-              |
-              v
-     Baseline evaluation
-              |
-              v
-     Optional teacher-generated data
-              |
-              v
-     Fine-tune a small student model
-              |
-              v
-     Evaluate and select checkpoint
-              |
-              v
-     Export / quantize if compatible
-              |
-              v
-     Ollama local inference
+``` text
+Examples -> Dataset generation -> Schema validation and review
+         -> Train/validation/test splits -> Baseline evaluation
+         -> Optional teacher-generated data -> Fine-tune student
+         -> Evaluate checkpoint -> Export/quantize if compatible
+         -> Ollama local inference
 ```
 
-Training must not be required for the application to run. The runtime should work with any compatible model that follows the shared output contract.
+Training must not be required for the application to run.
 
 ## 8. Model output contract
 
-The model must produce one JSON object with a supported action name and matching arguments. No explanatory prose should appear outside the JSON object.
+The model should produce one JSON object with a supported action name
+and matching arguments. Example:
 
-Example:
-
-```json
+``` json
 {
   "name": "add_note",
   "arguments": {
@@ -321,7 +485,7 @@ Example:
 
 Example clarification:
 
-```json
+``` json
 {
   "name": "clarify",
   "arguments": {
@@ -330,201 +494,257 @@ Example clarification:
 }
 ```
 
-The shared TypeScript representation should use a discriminated union keyed by the action name. Zod must validate the actual runtime output.
+Use a TypeScript discriminated union keyed by action name and validate
+actual runtime output with Zod. Schema-constrained model output helps
+but does not replace backend validation.
 
-Schema-constrained model output can be evaluated as an additional reliability measure, but it does not replace backend validation.
+The PowerShell smoke test used a simpler flat object (`action`, `title`,
+`when_text`, `duration_min`). That was an experiment only. Choose one
+canonical contract before implementing the backend and use it
+consistently across prompts, schemas, tests, and evaluation data.
 
 ## 9. Dataset and training specification
 
-### 9.1 Dataset objectives
+-   Start with a small, manually reviewed seed dataset.
+-   Expand only when evaluation reveals coverage gaps.
+-   Use hand-written, template-generated, and appropriately licensed
+    open examples.
+-   Consider teacher-generated examples when a suitable source and
+    permitted workflow are available.
+-   Store examples as JSONL chat records.
+-   Validate every expected response against the shared contract.
+-   Deduplicate near-identical examples.
+-   Keep the held-out test set separate from training and
+    model-selection decisions.
+-   Avoid data leakage across related template families.
+-   Record provenance and licenses.
 
-Build examples that teach the model to:
+A target of approximately 800 seed examples, expanding toward
+1,500--3,000 if justified, is an estimate rather than a fixed
+requirement.
 
-- Select the correct supported action.
-- Extract the appropriate arguments.
-- Recognize missing required information.
-- Return a normal response when no tool applies.
-- Ask for clarification when required.
-- Reject or handle out-of-scope requests appropriately.
-- Tolerate variations in phrasing, punctuation, casing, and common typos.
-
-### 9.2 Initial dataset plan
-
-- Start with a small, manually reviewed seed dataset.
-- Expand only when evaluation reveals coverage gaps.
-- Use hand-written, template-generated, and appropriately licensed open examples.
-- Consider teacher-generated examples when a suitable source and permitted workflow are available.
-- Store examples as JSONL chat records.
-- Validate every expected response against the shared contract.
-- Deduplicate near-identical examples.
-- Keep a held-out test set separate from training and model-selection decisions.
-- Split related template families carefully to avoid data leakage.
-- Record dataset provenance and licenses.
-
-A target of approximately 800 seed examples, expanding toward 1,500–3,000 if justified, is a planning estimate rather than a fixed requirement. A smaller, high-quality dataset may be sufficient to determine whether the experiment is promising.
-
-### 9.3 Training approach
-
-- Select an instruction-tuned open-weight model that fits available training and inference resources.
-- Verify model licensing and compatibility before training.
-- Establish the baseline before fine-tuning.
-- Use QLoRA or another appropriate parameter-efficient method when supported.
-- Save configurations, seeds, checkpoints, and evaluation results.
-- Export to a compatible format only after confirming the toolchain.
-- Quantize and test the final artifact locally.
-- Avoid assuming training has succeeded until the held-out evaluation supports that conclusion.
-
-Knowledge distillation is an optional extension. The initial approach is teacher-generated supervision followed by student fine-tuning, rather than requiring logit-based distillation.
+Select a compatible instruction-tuned model, establish the baseline
+before fine-tuning, save configurations/seeds/checkpoints/results, and
+test exported or quantized artifacts locally. Knowledge distillation is
+optional; teacher-generated supervision followed by student fine-tuning
+is a possible initial approach.
 
 ## 10. Evaluation specification
 
 Evaluate competing configurations on the same held-out examples.
 
-| Condition | Configuration |
-|---|---|
-| A | Base model with prompt-only or few-shot prompting |
-| B | Base model with schema-constrained output |
-| C | Fine-tuned model with prompting |
-| D | Fine-tuned model with schema-constrained output |
+  Condition   Configuration
+  ----------- ---------------------------------------------------
+  A           Base model with prompt-only or few-shot prompting
+  B           Base model with schema-constrained output
+  C           Fine-tuned model with prompting
+  D           Fine-tuned model with schema-constrained output
 
 Include a rules-based baseline when practical.
 
-### Metrics
+Metrics: - JSON-valid rate. - Schema-valid rate. - Tool-selection
+accuracy. - Argument-level precision, recall, and F1 where
+appropriate. - Correct handling of clarification and ordinary
+responses. - Error categories and representative failures. - End-to-end
+latency on the target laptop. - Model artifact size and memory
+requirements.
 
-- JSON-valid rate.
-- Schema-valid rate.
-- Tool-selection accuracy.
-- Argument-level precision, recall, and F1 where appropriate.
-- Correct handling of clarification and ordinary responses.
-- Error categories and representative failures.
-- End-to-end latency on the target laptop.
-- Model artifact size and memory requirements.
-
-Initial targets may include a schema-valid rate of at least 95%, tool-selection accuracy of at least 90%, and argument F1 of at least 85%. These are goals to test, not promised results.
-
-Report actual numbers, including regressions and limitations. The key research question is whether fine-tuning provides a meaningful improvement beyond prompting and schema-constrained output.
+Possible initial targets are schema-valid rate ≥95%, tool-selection
+accuracy ≥90%, and argument F1 ≥85%. These are goals, not promised
+results. Report actual numbers, regressions, and limitations.
 
 ## 11. Security and reliability requirements
 
-- Treat all model-generated content as untrusted.
-- Expose only explicitly whitelisted tools.
-- Never execute arbitrary model-generated shell commands or code.
-- Validate all incoming requests and model outputs.
-- Enforce authorization and confirmation separately from schema validation.
-- Use parameterized SQL.
-- Never use `eval` for arithmetic.
-- Apply sensible input lengths, request timeouts, and error handling.
-- Handle unavailable Ollama instances and malformed responses gracefully.
-- Retry validation failures at most once in the initial implementation.
-- Bind the local API to `127.0.0.1` by default.
-- Configure CORS and origin checks appropriately for the deployment mode.
-- Keep database files, credentials, and local model artifacts out of Git unless explicitly intended for release.
-- Do not send private user data to external teacher models or cloud services without an explicit, informed decision.
-- Revisit the threat model before allowing retrieved note contents or tool results to influence subsequent model decisions.
+-   Treat all model-generated content as untrusted.
+-   Expose only explicitly whitelisted tools.
+-   Never execute arbitrary model-generated shell commands or code.
+-   Validate all incoming requests and model outputs.
+-   Enforce authorization and confirmation separately from schema
+    validation.
+-   Use parameterized SQL; never use `eval` for arithmetic.
+-   Apply sensible input limits, timeouts, and error handling.
+-   Handle unavailable Ollama instances and malformed responses
+    gracefully.
+-   Retry validation failures at most once in the initial
+    implementation.
+-   Bind the local API to `127.0.0.1` by default where compatible;
+    configure devcontainer port forwarding deliberately.
+-   Configure CORS and origin checks for the deployment mode.
+-   Keep database files, credentials, and local model artifacts out of
+    Git unless intentionally released.
+-   Do not send private user data to external teacher models or cloud
+    services without an explicit, informed decision.
+-   Revisit the threat model before retrieved notes or tool results
+    influence later model decisions.
 
-## 12. Zero-cost deployment strategy
+## 12. Zero-cost strategy
 
-The default production target is a local-first application.
+-   Run frontend and backend locally during development.
+-   Run Ollama on the Windows host for local inference.
+-   Store data in local SQLite.
+-   Use available free compute for optional training.
+-   Use free repositories for source code and optional public model
+    artifacts.
+-   Do not depend on a continuously running free cloud GPU endpoint.
+-   Treat a public frontend demo and a fully hosted AI service as
+    separate deployment modes.
 
-- Host the frontend on a suitable free static-hosting plan.
-- Run the Hono API and Ollama locally for the complete assistant.
-- Store data in a local SQLite database.
-- Use available free compute for optional training experiments.
-- Use free repositories for source code and optional public model artifacts.
-- Do not depend on a continuously running, free cloud GPU endpoint.
-- Treat any hosted backend or browser-inference demo as a separate deployment mode with its own constraints.
+Zero cost is a design objective, not a guarantee of unlimited compute,
+hosting, storage, or availability.
 
-A static public website can showcase the interface and project information without requiring the full assistant to run in the cloud. A public AI service would need a reachable backend and inference runtime, which must be evaluated separately.
+## 13. Intended repository structure
 
-Zero cost is a design objective, not a guarantee of unlimited compute, hosting, storage, or availability. Review current provider limits and terms before deployment.
-
-## 13. Repository structure
-
-The intended structure is:
-
-```text
+``` text
 Prometheus/
 ├── apps/
-│   ├── web/                 # React + Vite frontend
-│   └── api/                 # Hono backend
+│   ├── web/                 # Existing React + Vite frontend
+│   └── api/                 # Planned Bun + Hono backend
 ├── packages/
-│   └── shared/              # Zod schemas, types, shared definitions
+│   └── shared/              # Planned Zod schemas and shared definitions
 ├── training/
-│   ├── datasets/            # Dataset documentation and generators
-│   ├── notebooks/           # Training experiments
-│   └── evaluations/         # Evaluation scripts and results
+│   ├── datasets/
+│   ├── notebooks/
+│   └── evaluations/
 ├── docs/
 │   ├── PROJECT_CONTEXT.md
+│   ├── LOCAL_INFERENCE_ENVIRONMENT.md
 │   ├── decisions.md
 │   ├── progress.md
 │   └── architecture.md
 ├── .agents/
 ├── .devcontainer/
-├── pnpm-workspace.yaml
-├── package.json
 ├── README.md
 └── .gitignore
 ```
 
-This structure is a target, not a requirement to create every directory immediately. Add files and packages when an implementation step needs them.
+This is a target structure, not a requirement to create every directory
+immediately. The root package/workspace configuration remains a decision
+to make after reviewing the existing frontend's pnpm setup.
 
-## 14. Development workflow
+## 14. Current repository and Bun status
 
-Prometheus is also a structured learning project. AI coding tools must support understanding and ownership of the implementation rather than replace them.
+Verified from the project terminal:
+
+-   Repository root: `/workspaces/Prometheus`.
+-   Existing branch: `main`.
+-   Existing frontend directory: `apps/web`.
+-   Existing devcontainer image:
+    `mcr.microsoft.com/devcontainers/typescript-node:24`.
+-   The repository already has `.devcontainer/`, `.agents/`,
+    `skills-lock.json`, `.gitignore`, `README.md`, `apps/`, and `docs/`.
+-   A search at `-maxdepth 2` did not find a package manifest because
+    the frontend manifest is deeper under `apps/web/package.json`.
+    Inspect the actual tree before changing workspace configuration.
+-   Do not initialize a second Git repository or replace the frontend
+    scaffold.
+
+### Bun installation status
+
+Bun was installed inside the Linux devcontainer using:
+
+``` bash
+curl -fsSL https://bun.com/install | bash
+```
+
+The installer reported that Bun was installed to `~/.bun/bin/bun` and
+added `~/.bun/bin` to `~/.bashrc`. However, running `bun --version`
+immediately afterward returned `bash: bun: command not found`.
+
+Therefore, Bun appears to have been installed, but the current shell has
+not picked up the updated PATH. Next diagnostic:
+
+``` bash
+source ~/.bashrc
+bun --version
+```
+
+If it still fails, inspect `echo "$PATH"` and verify `~/.bun/bin/bun`
+exists before reinstalling. A new terminal may load the updated profile.
+If Bun must be available after container rebuilds, add a verified
+installation step to `.devcontainer/setup.sh`; do not rely only on an
+interactive shell's `.bashrc`.
+
+Do not install Hono or create backend files until Bun is reachable and
+the package-manager strategy is understood.
+
+## 15. Development workflow
 
 For each meaningful feature:
 
-1. Define the requirement and acceptance criteria.
-2. Explain the relevant programming and system-design concepts.
-3. Write pseudocode or a small architecture sketch.
-4. Implement the core logic with guided, hands-on coding.
-5. Use autocomplete and delegated AI assistance selectively.
-6. Run tests, linting, and production builds as applicable.
-7. Obtain an independent review for meaningful changes.
-8. Fix confirmed defects and document unresolved risks.
-9. Record the learning and architectural decisions.
+1.  Define requirements and acceptance criteria.
+2.  Explain the relevant programming and system-design concepts.
+3.  Write pseudocode or a small architecture sketch.
+4.  Implement core logic with guided, hands-on coding.
+5.  Use autocomplete and delegated AI assistance selectively.
+6.  Run tests, linting, and production builds as applicable.
+7.  Obtain an independent review for meaningful changes.
+8.  Fix confirmed defects and document unresolved risks.
+9.  Record learning and architectural decisions.
 10. Commit a stable milestone to Git.
 
-Only one agent should actively modify a given set of files at a time. Independent reviewers should inspect changes without overwriting the implementation.
+AI tools should support understanding and ownership, not replace them.
+Keep one active writer per set of files; reviewers should inspect
+changes without overwriting implementation.
 
-## 15. Definition of done
+## 16. Immediate next steps
 
-Prometheus v1 is complete when:
+1.  Run `source ~/.bashrc` in the devcontainer terminal.
+2.  Verify `bun --version`.
+3.  Inspect root and `apps/web` package manifests.
+4.  Decide whether pnpm remains the workspace manager while Bun runs the
+    API, or deliberately migrate to Bun workspaces.
+5.  Create `apps/api` after those decisions are clear.
+6.  Install Hono and Zod in the API package.
+7.  Implement and test a minimal health-check route.
+8.  Verify connectivity from the devcontainer to the Windows-hosted
+    Ollama API.
+9.  Integrate Ollama using schema-constrained output and validate the
+    response with Zod.
+10. Add persistence and tool execution only after the model-to-API path
+    is reliable.
 
-- The frontend communicates with the Hono backend.
-- The shared contract is used consistently and tested.
-- The backend can obtain a response from a compatible local model.
-- Invalid model output cannot execute a tool.
-- All five productivity tools and two control actions behave as specified.
-- Notes, tasks, and events persist locally.
-- Date parsing and arithmetic are deterministic and tested.
-- Tool actions, validation results, and execution results are visible in the UI.
-- Unit and integration tests pass.
-- Linting and production builds pass.
-- The project can be run from documented instructions.
-- Dataset generation and evaluation are reproducible.
-- Baseline and fine-tuned results are reported honestly.
-- Model and dataset licensing is documented.
-- The README explains architecture, setup, limitations, and results.
+## 17. Definition of done
 
-If fine-tuning does not improve performance sufficiently, the application can still be completed with the best measured baseline. The project must report that outcome honestly rather than manufacture a successful result.
+Prometheus v1 is complete when: - The frontend communicates with Hono
+running on Bun. - The shared contract is used consistently and tested. -
+The backend can obtain a response from a compatible local model. -
+Invalid model output cannot execute a tool. - All five productivity
+tools and two control actions behave as specified. - Notes, tasks, and
+events persist locally. - Date parsing and arithmetic are deterministic
+and tested. - Tool actions, validation, and execution results are
+visible in the UI. - Unit and integration tests, linting, and production
+builds pass. - Setup instructions are reproducible. - Dataset generation
+and evaluation are reproducible. - Baseline and fine-tuned results are
+reported honestly. - Model and dataset licensing is documented. - The
+README explains architecture, setup, limitations, and results.
 
-## 16. Guiding principles
+If fine-tuning does not improve performance sufficiently, the
+application can still be completed with the best measured baseline.
+Report the outcome honestly.
 
-1. **The model proposes; the application decides and executes.**
-2. **Validate before execution.**
-3. **Use deterministic code for dates, arithmetic, and persistence.**
-4. **Share one contract across the runtime and evaluation pipeline.**
-5. **Measure before optimizing or fine-tuning.**
-6. **Build the smallest complete vertical slice before expanding scope.**
-7. **Prefer local execution and privacy by default.**
-8. **Avoid unnecessary infrastructure and dependencies.**
-9. **Use AI assistance to accelerate learning, not bypass it.**
-10. **Prioritize reproducibility, security, maintainability, and honest results.**
+## 18. Guiding principles
 
----
+1.  **The model proposes; the application decides and executes.**
+2.  **Validate before execution.**
+3.  **Use deterministic code for dates, arithmetic, and persistence.**
+4.  **Share one contract across runtime and evaluation.**
+5.  **Measure before optimizing or fine-tuning.**
+6.  **Build the smallest complete vertical slice before expanding
+    scope.**
+7.  **Prefer local execution and privacy by default.**
+8.  **Avoid unnecessary infrastructure and dependencies.**
+9.  **Use AI assistance to accelerate learning, not bypass it.**
+10. **Prioritize reproducibility, security, maintainability, and honest
+    results.**
 
-**Project identity:** Prometheus  
-**Primary deliverable:** A working local-first tool-calling assistant with measurable model evaluation.  
-**Primary engineering objective:** Build a maintainable full-stack application while learning to design, implement, test, and explain its architecture.  
-**Primary ML objective:** Determine empirically whether a small fine-tuned model improves structured tool use over a well-established baseline.
+------------------------------------------------------------------------
+
+**Project identity:** Prometheus\
+**Primary deliverable:** A working local-first tool-calling assistant
+with measurable model evaluation.\
+**Primary engineering objective:** Build a maintainable full-stack
+application while learning to design, implement, test, and explain its
+architecture.\
+**Primary ML objective:** Determine empirically whether a small
+fine-tuned model improves structured tool use over a well-established
+baseline.
