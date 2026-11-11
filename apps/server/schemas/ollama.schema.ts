@@ -17,11 +17,15 @@ export const ollamaChatResponseSchema = z.object({
     }),
 });
 
-export const ollamaStreamChunkSchema = z.object({
-    message: z.object({
-        content: z.string(),
-    }),
-    done: z.boolean(),
-}).loose();
-
 export type OllamaChatResponse = z.infer<typeof ollamaChatResponseSchema>;
+
+export const ollamaStreamChunkSchema = z
+    .object({
+        message: z.object({
+            content: z.string(),
+        }),
+        done: z.boolean(),
+    })
+    .loose();
+
+export type OllamaStreamChunk = z.infer<typeof ollamaStreamChunkSchema>;

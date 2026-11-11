@@ -1,4 +1,4 @@
-import { Context } from "hono";
+import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export interface ApiErrorResponse {
@@ -7,9 +7,16 @@ export interface ApiErrorResponse {
     errors?: unknown;
 }
 
+const DEFAULT_ERROR_MESSAGE = "An unexpected error occurred";
+
+const SAFE_ERROR_MESSAGES: Partial<Record<number, string>> = {
+    502: "The model service request failed",
+    503: "The model service is unavailable",
+    504: "The model service timed out",
+};
+
 export function createErrorResponse(
     message: string,
-    status: number = 500,
     errors?: unknown,
 ): ApiErrorResponse {
     const response: ApiErrorResponse = {
@@ -22,11 +29,13 @@ export function createErrorResponse(
     return response;
 }
 
-export function handleError(error: unknown): { message: string; status: ContentfulStatusCode } {
-    if (error instanceof Error) {
-        return { message: error.message, status: 500 };
-    }
-    return { message: "An unexpected error occurred", status: 500 };
+function resolveErrorStatus(
+    error: unknown,
+    defaultStatus: ContentfulStatusCode,
+): ContentfulStatusCode {
+    const isTimeout = error instanceof Error && error.name === "TimeoutError";
+
+    return isTimeout ? 504 : defaultStatus;
 }
 
 export function respondWithError(
@@ -34,8 +43,12 @@ export function respondWithError(
     error: unknown,
     defaultStatus: ContentfulStatusCode = 500,
 ): Response {
-    const { message } = handleError(error);
-    return c.json(createErrorResponse(message, defaultStatus), defaultStatus);
+    console.error(error);
+
+    const status = resolveErrorStatus(error, defaultStatus);
+    const message = SAFE_ERROR_MESSAGES[status] ?? DEFAULT_ERROR_MESSAGE;
+
+    return c.json(createErrorResponse(message), status);
 }
 
 export function respondWithValidationError(
@@ -43,8 +56,5 @@ export function respondWithValidationError(
     issues: unknown,
     status: ContentfulStatusCode = 400,
 ): Response {
-    return c.json(
-        createErrorResponse("Invalid request", status, issues),
-        status,
-    );
+    return c.json(createErrorResponse("Invalid request", issues), status);
 }

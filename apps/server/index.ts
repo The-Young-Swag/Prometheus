@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { streamText } from "hono/streaming";
 import { chatRequestSchema } from "./schemas/chat.schema";
@@ -6,6 +6,7 @@ import {
     generateOllamaResponse,
     generateOllamaStream,
     getOllamaModels,
+    isOllamaModelAvailable,
 } from "./services/ollama.service";
 import { getRequiredModel } from "./utils/config";
 import {
@@ -40,17 +41,11 @@ app.get("/health/model", async (c) => {
         const requiredModel = getRequiredModel();
         const models = await getOllamaModels();
 
-        const modelAvailable = models.some(
-            (model) => model.name === requiredModel,
-        );
-
-        if (!modelAvailable) {
+        if (!isOllamaModelAvailable(models, requiredModel)) {
             return c.json(
-                createErrorResponse(
-                    "Required model is not available",
-                    503,
-                    { model: requiredModel },
-                ),
+                createErrorResponse("Required model is not available", {
+                    model: requiredModel,
+                }),
                 503,
             );
         }
@@ -66,21 +61,8 @@ app.get("/health/model", async (c) => {
     }
 });
 
-async function handleChatRequest(c: any, message: string, stream: boolean) {
+async function sendChatReply(c: Context, message: string): Promise<Response> {
     try {
-        if (stream) {
-            return streamText(c, async (streamWriter) => {
-                const tokenStream = generateOllamaStream(
-                    message,
-                    c.req.raw.signal,
-                );
-
-                for await (const token of tokenStream) {
-                    await streamWriter.write(token);
-                }
-            });
-        }
-
         const reply = await generateOllamaResponse(message);
 
         return c.json({
@@ -90,6 +72,16 @@ async function handleChatRequest(c: any, message: string, stream: boolean) {
     } catch (error) {
         return respondWithError(c, error, 502);
     }
+}
+
+function streamChatReply(c: Context, message: string): Response {
+    return streamText(c, async (streamWriter) => {
+        const tokenStream = generateOllamaStream(message, c.req.raw.signal);
+
+        for await (const token of tokenStream) {
+            await streamWriter.write(token);
+        }
+    });
 }
 
 app.get("/api/chat", async (c) => {
@@ -102,7 +94,7 @@ app.get("/api/chat", async (c) => {
             return respondWithValidationError(c, validation.error.issues);
         }
 
-        return handleChatRequest(c, validation.data.message, false);
+        return sendChatReply(c, validation.data.message);
     }
 
     return c.json({
@@ -121,23 +113,25 @@ app.get("/api/chat", async (c) => {
 });
 
 app.post("/api/chat", async (c) => {
+    let body: unknown;
+
     try {
-        const body: unknown = await c.req.json();
-
-        const validation = chatRequestSchema.safeParse(body);
-
-        if (!validation.success) {
-            return respondWithValidationError(c, validation.error.issues);
-        }
-
-        return handleChatRequest(
-            c,
-            validation.data.message,
-            validation.data.stream,
-        );
-    } catch (error) {
-        return respondWithError(c, error, 502);
+        body = await c.req.json();
+    } catch {
+        return c.json(createErrorResponse("Invalid JSON body"), 400);
     }
+
+    const validation = chatRequestSchema.safeParse(body);
+
+    if (!validation.success) {
+        return respondWithValidationError(c, validation.error.issues);
+    }
+
+    if (validation.data.stream) {
+        return streamChatReply(c, validation.data.message);
+    }
+
+    return sendChatReply(c, validation.data.message);
 });
 
 export default app;
