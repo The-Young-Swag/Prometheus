@@ -7,13 +7,17 @@ import {
     generateOllamaStream,
     getOllamaModels,
 } from "./services/ollama.service";
+import { getRequiredModel } from "./utils/config";
+import {
+    createErrorResponse,
+    respondWithError,
+    respondWithValidationError,
+} from "./utils/error";
 
 const app = new Hono();
 
-// Enable Cross-Origin Resource Sharing (CORS) for frontend clients
 app.use("*", cors());
 
-// Root API information
 app.get("/", (c) => {
     return c.json({
         name: "Prometheus API",
@@ -27,26 +31,13 @@ app.get("/", (c) => {
     });
 });
 
-// Basic API health check
 app.get("/health", (c) => {
     return c.json({ status: "OK" });
 });
 
-// Ollama connectivity and model availability check
 app.get("/health/model", async (c) => {
-    const requiredModel = process.env.OLLAMA_MODEL;
-
-    if (!requiredModel) {
-        return c.json(
-            {
-                status: "error",
-                message: "OLLAMA_MODEL is not configured",
-            },
-            500,
-        );
-    }
-
     try {
+        const requiredModel = getRequiredModel();
         const models = await getOllamaModels();
 
         const modelAvailable = models.some(
@@ -55,11 +46,11 @@ app.get("/health/model", async (c) => {
 
         if (!modelAvailable) {
             return c.json(
-                {
-                    status: "unavailable",
-                    model: requiredModel,
-                    message: "Required model is not available",
-                },
+                createErrorResponse(
+                    "Required model is not available",
+                    503,
+                    { model: requiredModel },
+                ),
                 503,
             );
         }
@@ -71,60 +62,49 @@ app.get("/health/model", async (c) => {
             availableModels: models.map((model) => model.name),
         });
     } catch (error) {
-        return c.json(
-            {
-                status: "unavailable",
-                ollama: "disconnected",
-                message:
-                    error instanceof Error
-                        ? error.message
-                        : "An unexpected error occurred",
-            },
-            503,
-        );
+        return respondWithError(c, error, 503);
     }
 });
 
-// GET /api/chat - Informational endpoint & browser address-bar test query
+async function handleChatRequest(c: any, message: string, stream: boolean) {
+    try {
+        if (stream) {
+            return streamText(c, async (streamWriter) => {
+                const tokenStream = generateOllamaStream(
+                    message,
+                    c.req.raw.signal,
+                );
+
+                for await (const token of tokenStream) {
+                    await streamWriter.write(token);
+                }
+            });
+        }
+
+        const reply = await generateOllamaResponse(message);
+
+        return c.json({
+            status: "OK",
+            reply,
+        });
+    } catch (error) {
+        return respondWithError(c, error, 502);
+    }
+}
+
 app.get("/api/chat", async (c) => {
     const queryMessage = c.req.query("message");
 
-    // Allow quick testing directly from browser address bar: /api/chat?message=hello
     if (queryMessage) {
         const validation = chatRequestSchema.safeParse({ message: queryMessage });
 
         if (!validation.success) {
-            return c.json(
-                {
-                    status: "error",
-                    message: "Invalid request",
-                    errors: validation.error.issues,
-                },
-                400,
-            );
+            return respondWithValidationError(c, validation.error.issues);
         }
 
-        try {
-            const reply = await generateOllamaResponse(validation.data.message);
-            return c.json({
-                status: "OK",
-                reply,
-            });
-        } catch (error) {
-            return c.json(
-                {
-                    status: "error",
-                    message:
-                        error instanceof Error
-                            ? error.message
-                            : "An unexpected error occurred",
-                },
-                502,
-            );
-        }
+        return handleChatRequest(c, validation.data.message, false);
     }
 
-    // Default friendly response when visiting /api/chat directly in a browser
     return c.json({
         status: "OK",
         endpoint: "/api/chat",
@@ -140,7 +120,6 @@ app.get("/api/chat", async (c) => {
     });
 });
 
-// POST /api/chat - Primary conversational chat endpoint (buffered & streaming)
 app.post("/api/chat", async (c) => {
     try {
         const body: unknown = await c.req.json();
@@ -148,50 +127,16 @@ app.post("/api/chat", async (c) => {
         const validation = chatRequestSchema.safeParse(body);
 
         if (!validation.success) {
-            return c.json(
-                {
-                    status: "error",
-                    message: "Invalid request",
-                    errors: validation.error.issues,
-                },
-                400,
-            );
+            return respondWithValidationError(c, validation.error.issues);
         }
 
-        // Stream tokens via chunked transfer encoding when requested
-        if (validation.data.stream) {
-            return streamText(c, async (stream) => {
-                const tokenStream = generateOllamaStream(
-                    validation.data.message,
-                    c.req.raw.signal,
-                );
-
-                for await (const token of tokenStream) {
-                    await stream.write(token);
-                }
-            });
-        }
-
-        // Buffered single-payload response
-        const reply = await generateOllamaResponse(
+        return handleChatRequest(
+            c,
             validation.data.message,
+            validation.data.stream,
         );
-
-        return c.json({
-            status: "OK",
-            reply,
-        });
     } catch (error) {
-        return c.json(
-            {
-                status: "error",
-                message:
-                    error instanceof Error
-                        ? error.message
-                        : "An unexpected error occurred",
-            },
-            502,
-        );
+        return respondWithError(c, error, 502);
     }
 });
 

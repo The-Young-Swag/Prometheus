@@ -3,17 +3,12 @@ import {
     ollamaStreamChunkSchema,
     ollamaTagsSchema,
 } from "../schemas/ollama.schema";
+import { getOllamaConfig } from "../utils/config";
 
 const OLLAMA_TAGS_TIMEOUT_MS = 5_000;
 const OLLAMA_CHAT_TIMEOUT_MS = 120_000;
 
-export async function getOllamaModels() {
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-
-    if (!baseUrl) {
-        throw new Error("OLLAMA_BASE_URL is not configured");
-    }
-
+async function fetchOllamaTags(baseUrl: string) {
     const response = await fetch(`${baseUrl}/api/tags`, {
         signal: AbortSignal.timeout(OLLAMA_TAGS_TIMEOUT_MS),
     });
@@ -32,60 +27,25 @@ export async function getOllamaModels() {
     return result.data.models;
 }
 
-export async function generateOllamaResponse(message: string) {
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-    const model = process.env.OLLAMA_MODEL;
-
-    if (!baseUrl || !model) {
-        throw new Error("Ollama configuration is incomplete");
-    }
-
-    const response = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model,
-            messages: [
-                {
-                    role: "user",
-                    content: message,
-                },
-            ],
-            stream: false,
-        }),
-        signal: AbortSignal.timeout(OLLAMA_CHAT_TIMEOUT_MS),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Ollama returned HTTP ${response.status}`);
-    }
-
-    const json: unknown = await response.json();
-    const result = ollamaChatResponseSchema.safeParse(json);
-
-    if (!result.success) {
-        throw new Error("Invalid Ollama chat response");
-    }
-
-    return result.data.message.content;
+export async function getOllamaModels() {
+    const { baseUrl } = getOllamaConfig();
+    return fetchOllamaTags(baseUrl);
 }
 
+interface OllamaChatOptions {
+    message: string;
+    stream: boolean;
+    clientSignal?: AbortSignal;
+}
 
-export async function* generateOllamaStream(
-    message: string,
-    clientSignal?: AbortSignal,
-): AsyncGenerator<string> {
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-    const model = process.env.OLLAMA_MODEL;
-
-    if (!baseUrl || !model) {
-        throw new Error("Ollama configuration is incomplete");
-    }
+async function fetchOllamaChat(
+    baseUrl: string,
+    model: string,
+    options: OllamaChatOptions,
+) {
+    const { message, stream, clientSignal } = options;
 
     const timeoutSignal = AbortSignal.timeout(OLLAMA_CHAT_TIMEOUT_MS);
-
     const signal = clientSignal
         ? AbortSignal.any([clientSignal, timeoutSignal])
         : timeoutSignal;
@@ -98,7 +58,7 @@ export async function* generateOllamaStream(
         body: JSON.stringify({
             model,
             messages: [{ role: "user", content: message }],
-            stream: true,
+            stream,
         }),
         signal,
     });
@@ -106,6 +66,39 @@ export async function* generateOllamaStream(
     if (!response.ok) {
         throw new Error(`Ollama returned HTTP ${response.status}`);
     }
+
+    return response;
+}
+
+export async function generateOllamaResponse(message: string) {
+    const { baseUrl, model } = getOllamaConfig();
+
+    const response = await fetchOllamaChat(baseUrl, model, {
+        message,
+        stream: false,
+    });
+
+    const json: unknown = await response.json();
+    const result = ollamaChatResponseSchema.safeParse(json);
+
+    if (!result.success) {
+        throw new Error("Invalid Ollama chat response");
+    }
+
+    return result.data.message.content;
+}
+
+export async function* generateOllamaStream(
+    message: string,
+    clientSignal?: AbortSignal,
+): AsyncGenerator<string> {
+    const { baseUrl, model } = getOllamaConfig();
+
+    const response = await fetchOllamaChat(baseUrl, model, {
+        message,
+        stream: true,
+        clientSignal,
+    });
 
     if (!response.body) {
         throw new Error("Ollama returned an empty response body");
@@ -142,10 +135,8 @@ export async function* generateOllamaStream(
         }
     }
 
-    // Flush any remaining bytes held by the decoder.
     buffer += decoder.decode();
 
-    // Process the final event if it doesn't end with a newline.
     if (buffer.trim()) {
         const json: unknown = JSON.parse(buffer);
         const result = ollamaStreamChunkSchema.safeParse(json);
@@ -159,4 +150,3 @@ export async function* generateOllamaStream(
         }
     }
 }
-
